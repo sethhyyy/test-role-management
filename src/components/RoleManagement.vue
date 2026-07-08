@@ -8,13 +8,13 @@
       </v-btn>
     </div>
 
-    <!-- Roles Table -->
+    <!-- Users Table -->
     <v-card class="mb-4 table-card" elevation="0" outlined>
       <v-data-table
         :headers="headers"
-        :items="filteredRoles"
+        :items="filteredUsers"
         item-key="id"
-        class="elevation-0 role-table"
+        class="elevation-0 user-table"
         :class="{ 'has-deleted': showDeleted }"
         hide-default-footer
       >
@@ -22,81 +22,57 @@
           <span class="text-medium">{{ item.id }}</span>
         </template>
 
-        <template #[`item.role_name`]="{ item }">
-          <span class="font-weight-medium">{{ item.role_name }}</span>
+        <template #[`item.fullname`]="{ item }">
+          <span class="font-weight-medium">{{ item.fullname }}</span>
         </template>
         
-        <template #[`item.role_level`]="{ item }">
+        <template #[`item.id_card`]="{ item }">
+          <span>{{ item.id_card || '-' }}</span>
+        </template>
+        
+        <template #[`item.phone`]="{ item }">
+          <span>{{ item.phone || '-' }}</span>
+        </template>
+        
+        <template #[`item.email`]="{ item }">
+          <span>{{ item.email }}</span>
+        </template>
+        
+        <template #[`item.role`]="{ item }">
           <v-chip
-            :color="getRoleLevelColor(item.role_level)"
-            text-color="white"
+            :color="item.role === 'Super Admin' ? '#ffcdd2' : '#c8e6c9'"
+            :text-color="item.role === 'Super Admin' ? '#c62828' : '#2e7d32'"
             small
             label
-            class="role-chip"
+            class="role-chip px-4"
           >
-            {{ getRoleLevelText(item.role_level) }}
+            {{ item.role }}
           </v-chip>
-        </template>
-        
-        <template #[`item.tab_allowed`]="{ item }">
-          <div class="d-flex flex-wrap" style="gap: 4px;">
-            <v-chip
-              v-for="tabKey in getMainTabs(item.tab_allowed)"
-              :key="tabKey"
-              color="success"
-              text-color="white"
-              x-small
-              label
-            >
-              {{ getTabLabel(tabKey) }}
-            </v-chip>
-          </div>
-        </template>
-        
-        <template #[`item.deletable`]="{ item }">
-          <v-chip
-            :color="item.deletable ? 'success' : 'error'"
-            text-color="white"
-            x-small
-            label
-          >
-            {{ item.deletable ? 'ใช่' : 'ไม่' }}
-          </v-chip>
-        </template>
-        
-        <template #[`item.create_at`]="{ item }">
-          <span class="text-grey">{{ formatDate(item.create_at) }}</span>
-        </template>
-        
-        <template #[`item.update_at`]="{ item }">
-          <span class="text-grey">{{ formatDate(item.update_at) }}</span>
         </template>
         
         <template #[`item.actions`]="{ item }">
-          <v-btn
-            icon
-            small
-            color="primary"
-            @click="openEditModal(item)"
-            :disabled="item.isDeleted"
-            class="action-btn"
-          >
-            <v-icon small>mdi-pencil</v-icon>
-          </v-btn>
-          <v-btn
-            icon
-            small
-            color="error"
-            @click="deleteRole(item)"
-            :disabled="!item.deletable || item.isDeleted"
-            class="action-btn"
-          >
-            <v-icon small>mdi-delete</v-icon>
-          </v-btn>
-        </template>
-        
-        <template #[`item.data-table-expand`]="{ item }">
-          <span v-if="item.isDeleted" class="text-caption grey--text">ถูกลบแล้ว</span>
+          <div class="d-flex">
+            <v-btn
+              icon
+              small
+              color="#1976d2"
+              @click="openEditModal(item)"
+              :disabled="item.isDeleted"
+              class="action-btn"
+            >
+              <v-icon small>mdi-pencil</v-icon>
+            </v-btn>
+            <v-btn
+              icon
+              small
+              color="#d32f2f"
+              @click="deleteUser(item)"
+              :disabled="item.isDeleted"
+              class="action-btn"
+            >
+              <v-icon small>mdi-delete</v-icon>
+            </v-btn>
+          </div>
         </template>
       </v-data-table>
     </v-card>
@@ -105,7 +81,7 @@
     <v-card elevation="0" outlined class="py-2 px-3" style="background-color: #f8f9fa;">
       <v-checkbox
         v-model="showDeleted"
-        label="แสดง Role ที่ถูกลบแล้ว"
+        label="แสดงผู้ใช้ที่ถูกลบแล้ว"
         hide-details
         class="mt-0"
         dense
@@ -116,7 +92,7 @@
     <v-dialog v-model="showModal" max-width="600px" persistent>
       <v-card class="dialog-card">
         <v-card-title class="dialog-header d-flex align-center">
-          <span class="text-h6 font-weight-bold white--text">{{ isEditMode ? 'แก้ไข Role' : 'เพิ่ม Role ใหม่' }}</span>
+          <span class="text-h6 font-weight-bold white--text">{{ isEditMode ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้ใหม่' }}</span>
           <v-spacer></v-spacer>
           <v-btn icon dark @click="closeModal">
             <v-icon>mdi-close</v-icon>
@@ -125,65 +101,74 @@
         
         <v-card-text class="pt-6">
           <v-form ref="form" v-model="valid" lazy-validation>
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="formData.firstname"
+                  label="ชื่อ"
+                  outlined
+                  dense
+                  :rules="[v => !!v || 'กรุณากรอกชื่อ']"
+                  class="mb-2"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="formData.lastname"
+                  label="นามสกุล"
+                  outlined
+                  dense
+                  :rules="[v => !!v || 'กรุณากรอกนามสกุล']"
+                  class="mb-2"
+                ></v-text-field>
+              </v-col>
+            </v-row>
+            
             <v-text-field
-              v-model="formData.role_name"
-              label="ชื่อ Role"
+              v-model="formData.id_card"
+              label="เลขบัตรประชาชน"
               outlined
               dense
-              :rules="[v => !!v || 'กรุณากรอกชื่อ Role']"
-              :disabled="isEditMode"
+              :rules="[v => !v || /^\d{13}$/.test(v) || 'กรุณากรอกเลขบัตร 13 หลัก']"
+              maxlength="13"
+              class="mb-2"
+            ></v-text-field>
+            
+            <v-text-field
+              v-model="formData.phone"
+              label="เบอร์โทร"
+              outlined
+              dense
+              :rules="[v => !v || /^0\d{9}$/.test(v) || 'กรุณากรอกเบอร์โทร 10 หลัก']"
+              maxlength="10"
+              class="mb-2"
+            ></v-text-field>
+            
+            <v-text-field
+              v-model="formData.email"
+              label="อีเมล"
+              outlined
+              dense
+              :rules="[v => !!v || 'กรุณากรอกอีเมล', v => /.+@.+\..+/.test(v) || 'อีเมลไม่ถูกต้อง']"
               class="mb-4"
             ></v-text-field>
             
             <v-select
-              v-model="formData.role_level"
-              :items="roleLevelItems"
-              label="ระดับ Role"
+              v-model="formData.role"
+              :items="roleItems"
+              label="ตำแหน่ง"
               outlined
               dense
-              :rules="[v => v !== null && v !== undefined || 'กรุณาเลือกระดับ Role']"
-              :disabled="isEditMode"
+              :rules="[v => !!v || 'กรุณาเลือกตำแหน่ง']"
               class="mb-4"
             ></v-select>
-            
-            <div class="mb-4">
-              <label class="text-subtitle-2 font-weight-medium mb-2 d-block">แท็บที่อนุญาต</label>
-              <v-card outlined class="pa-3" style="max-height: 300px; overflow-y: auto; background-color: #fafafa;">
-                <v-row dense>
-                  <v-col
-                    v-for="tab in availableTabs"
-                    :key="tab.key"
-                    cols="6"
-                    :class="{ 'pl-8': tab.parent }"
-                  >
-                    <v-checkbox
-                      v-model="selectedTabs"
-                      :value="tab.key"
-                      :label="tab.label"
-                      hide-details
-                      dense
-                      class="mt-0"
-                      :disabled="tab.parent && !selectedTabs.includes(tab.parent)"
-                    ></v-checkbox>
-                  </v-col>
-                </v-row>
-              </v-card>
-            </div>
-            
-            <v-checkbox
-              v-model="formData.deletable"
-              label="สามารถลบได้ (Deletable)"
-              hide-details
-              dense
-              class="mt-0"
-            ></v-checkbox>
           </v-form>
         </v-card-text>
         
         <v-card-actions class="pa-4">
           <v-spacer></v-spacer>
           <v-btn color="grey" text @click="closeModal" class="mr-2">ยกเลิก</v-btn>
-          <v-btn color="primary" dark @click="saveRole">{{ isEditMode ? 'บันทึก' : 'เพิ่ม Role' }}</v-btn>
+          <v-btn color="primary" dark @click="saveUser">{{ isEditMode ? 'บันทึก' : 'เพิ่มผู้ใช้' }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -196,7 +181,7 @@
           <span class="text-h6 font-weight-bold white--text">ยืนยันการลบ</span>
         </v-card-title>
         <v-card-text class="pt-6">
-          <p>คุณต้องการลบ Role <strong>{{ roleToDelete?.role_name }}</strong> ใช่หรือไม่?</p>
+          <p>คุณต้องการลบผู้ใช้ <strong>{{ userToDelete?.fullname }}</strong> ใช่หรือไม่?</p>
           <v-alert type="warning" dense text class="mt-3">
             การกระทำนี้ไม่สามารถย้อนกลับได้
           </v-alert>
@@ -217,56 +202,41 @@ export default {
   data() {
     return {
       valid: true,
-      roles: [],
+      users: [],
       showDeleted: false,
       showModal: false,
       showDeleteModal: false,
       isEditMode: false,
-      roleToDelete: null,
-      availableTabs: [
-        { key: 'member_info', label: 'ข้อมูลสมาชิก' },
-        { key: 'registration_docs', label: 'หลักฐานขึ้นทะเบียน' },
-        { key: 'registration_docs_verify', label: 'ตรวจสอบหลักฐาน', parent: 'registration_docs' },
-        { key: 'registration_docs_pending', label: 'รอขึ้นทะเบียน', parent: 'registration_docs' },
-        { key: 'license_renewal_verify', label: 'ตรวจสอบหลักฐานต่อใบอนุญาต' },
-        { key: 'license_renewal_pending', label: 'รอขึ้นทะเบียนใบอนุญาต', parent: 'license_renewal_verify' },
-        { key: 'system_overview', label: 'ภาพรวมระบบ' },
-        { key: 'edit_request', label: 'ขอแก้ไขข้อมูล' },
-        { key: 'admin_management', label: 'จัดการผู้ดูแล' }
-      ],
-      selectedTabs: [],
+      userToDelete: null,
       formData: {
         id: null,
-        role_name: '',
-        role_level: 0,
-        tab_allowed: {},
-        deletable: true,
+        firstname: '',
+        lastname: '',
+        id_card: '',
+        phone: '',
+        email: '',
+        role: 'Admin',
         isDeleted: false
       },
-      nextId: 4,
+      nextId: 9,
       headers: [
-        { text: 'ลำดับ', value: 'no', width: 60 },
-        { text: 'ชื่อ Role', value: 'role_name', width: 150 },
-        { text: 'ระดับ', value: 'role_level', width: 100 },
-        { text: 'แท็บที่อนุญาต', value: 'tab_allowed' },
-        { text: 'ลบได้', value: 'deletable', width: 70 },
-        { text: 'สร้างเมื่อ', value: 'create_at', width: 150 },
-        { text: 'แก้ไขเมื่อ', value: 'update_at', width: 150 },
+        { text: 'ลำดับ', value: 'no', width: 80 },
+        { text: 'ชื่อ-นามสกุล', value: 'fullname', width: 200 },
+        { text: 'เลขบัตรประชาชน', value: 'id_card', width: 150 },
+        { text: 'เบอร์โทร', value: 'phone', width: 130 },
+        { text: 'อีเมล', value: 'email', width: 180 },
+        { text: 'ตำแหน่ง', value: 'role', width: 120 },
         { text: 'จัดการ', value: 'actions', width: 100, sortable: false }
       ],
-      roleLevelItems: [
-        { text: 'User (0)', value: 0 },
-        { text: 'Admin (1)', value: 1 },
-        { text: 'Superadmin (2)', value: 2 }
-      ]
+      roleItems: ['Super Admin', 'Admin', 'User']
     }
   },
   computed: {
-    filteredRoles() {
+    filteredUsers() {
       if (this.showDeleted) {
-        return this.roles
+        return this.users
       }
-      return this.roles.filter(role => !role.isDeleted)
+      return this.users.filter(user => !user.isDeleted)
     }
   },
   created() {
@@ -274,213 +244,197 @@ export default {
   },
   methods: {
     loadMockData() {
-      this.roles = [
+      this.users = [
         {
           id: 1,
-          role_name: 'User',
-          role_level: 0,
-          tab_allowed: {
-            member_info: true,
-            registration_docs: false,
-            registration_docs_verify: false,
-            registration_docs_pending: false,
-            license_renewal_verify: false,
-            license_renewal_pending: false,
-            system_overview: false,
-            edit_request: true,
-            admin_management: false
-          },
-          deletable: true,
-          isDeleted: false,
-          create_at: '2025-01-01T08:00:00Z',
-          update_at: '2025-01-01T08:00:00Z'
+          firstname: 'พิภัทร',
+          lastname: 'วรปาณิ',
+          fullname: 'นายพิภัทร วรปาณิ',
+          id_card: '1659902026799',
+          phone: '0823555595',
+          email: 'packaq2@gmail.com',
+          role: 'Super Admin',
+          isDeleted: false
         },
         {
           id: 2,
-          role_name: 'Admin',
-          role_level: 1,
-          tab_allowed: {
-            member_info: true,
-            registration_docs: true,
-            registration_docs_verify: true,
-            registration_docs_pending: true,
-            license_renewal_verify: true,
-            license_renewal_pending: true,
-            system_overview: false,
-            edit_request: true,
-            admin_management: false
-          },
-          deletable: false,
-          isDeleted: false,
-          create_at: '2025-01-01T08:00:00Z',
-          update_at: '2025-01-01T08:00:00Z'
+          firstname: 'ชื่อ',
+          lastname: 'นามสกุล',
+          fullname: 'นายชื่อ นามสกุล',
+          id_card: '',
+          phone: '123',
+          email: 'test@email.com',
+          role: 'Admin',
+          isDeleted: false
         },
         {
           id: 3,
-          role_name: 'Superadmin',
-          role_level: 2,
-          tab_allowed: {
-            member_info: true,
-            registration_docs: true,
-            registration_docs_verify: true,
-            registration_docs_pending: true,
-            license_renewal_verify: true,
-            license_renewal_pending: true,
-            system_overview: true,
-            edit_request: true,
-            admin_management: true
-          },
-          deletable: false,
-          isDeleted: false,
-          create_at: '2025-01-01T08:00:00Z',
-          update_at: '2025-01-01T08:00:00Z'
+          firstname: 'ชื่อ',
+          lastname: 'นามสกุล',
+          fullname: 'นายชื่อ นามสกุล',
+          id_card: '',
+          phone: '123',
+          email: 'test@email.com',
+          role: 'Admin',
+          isDeleted: false
+        },
+        {
+          id: 4,
+          firstname: 'ชื่อ2',
+          lastname: 'นามสกุล2',
+          fullname: 'นายชื่อ2 นามสกุล2',
+          id_card: '123',
+          phone: '123456',
+          email: '2test@email.com',
+          role: 'Super Admin',
+          isDeleted: false
+        },
+        {
+          id: 5,
+          firstname: 'ชื่อ',
+          lastname: 'นามสกุล',
+          fullname: 'นายชื่อ นามสกุล',
+          id_card: '',
+          phone: '123',
+          email: 'test@email.com',
+          role: 'Admin',
+          isDeleted: false
+        },
+        {
+          id: 6,
+          firstname: 'แอดมิน',
+          lastname: 'ระบบ',
+          fullname: 'นายแอดมิน ระบบ',
+          id_card: '',
+          phone: '0000000000',
+          email: 'test@email.com',
+          role: 'Super Admin',
+          isDeleted: false
+        },
+        {
+          id: 7,
+          firstname: 'ทดสอบหนึ่ง',
+          lastname: 'ทดสอบหนึ่ง',
+          fullname: 'นางสาวทดสอบหนึ่ง ทดสอบหนึ่ง',
+          id_card: '1208804989536',
+          phone: '0855855858',
+          email: 'test@testmail.com',
+          role: 'Admin',
+          isDeleted: false
+        },
+        {
+          id: 8,
+          firstname: 'ทดสอบสอง',
+          lastname: 'ทดสอบสอง',
+          fullname: 'นางทดสอบสอง ทดสอบสอง',
+          id_card: '7073577320823',
+          phone: '0874747747',
+          email: 'test@testmail.com',
+          role: 'Admin',
+          isDeleted: false
         }
       ]
-      this.nextId = this.roles.length + 1
-    },
-
-    getRoleLevelText(level) {
-      const levels = {
-        0: 'User',
-        1: 'Admin',
-        2: 'Superadmin'
-      }
-      return levels[level] || 'Unknown'
-    },
-
-    getRoleLevelColor(level) {
-      const colors = {
-        0: '#5c6bc0',
-        1: '#66bb6a',
-        2: '#ef5350'
-      }
-      return colors[level] || '#757575'
-    },
-
-    formatDate(dateString) {
-      if (!dateString) return '-'
-      const date = new Date(dateString)
-      return date.toLocaleString('th-TH', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      this.nextId = this.users.length + 1
     },
 
     openAddModal() {
       this.isEditMode = false
       this.formData = {
         id: null,
-        role_name: '',
-        role_level: 0,
-        tab_allowed: {},
-        deletable: true,
+        firstname: '',
+        lastname: '',
+        id_card: '',
+        phone: '',
+        email: '',
+        role: 'Admin',
         isDeleted: false
       }
-      this.selectedTabs = []
       this.showModal = true
       if (this.$refs.form) {
         this.$refs.form.resetValidation()
       }
     },
 
-    openEditModal(role) {
+    openEditModal(user) {
       this.isEditMode = true
       this.formData = {
-        id: role.id,
-        role_name: role.role_name,
-        role_level: role.role_level,
-        tab_allowed: { ...role.tab_allowed },
-        deletable: role.deletable,
-        isDeleted: role.isDeleted
+        id: user.id,
+        firstname: user.firstname || '',
+        lastname: user.lastname || '',
+        id_card: user.id_card || '',
+        phone: user.phone || '',
+        email: user.email,
+        role: user.role,
+        isDeleted: user.isDeleted
       }
-      this.selectedTabs = Object.keys(role.tab_allowed).filter(tab => role.tab_allowed[tab])
       this.showModal = true
     },
 
     closeModal() {
       this.showModal = false
       this.formData = {}
-      this.selectedTabs = []
     },
 
-    openDeleteModal(role) {
-      this.roleToDelete = role
+    openDeleteModal(user) {
+      this.userToDelete = user
       this.showDeleteModal = true
     },
 
     closeDeleteModal() {
       this.showDeleteModal = false
-      this.roleToDelete = null
+      this.userToDelete = null
     },
 
-    deleteRole(role) {
-      this.openDeleteModal(role)
+    deleteUser(user) {
+      this.openDeleteModal(user)
     },
 
     confirmDelete() {
-      if (this.roleToDelete) {
-        const index = this.roles.findIndex(r => r.id === this.roleToDelete.id)
+      if (this.userToDelete) {
+        const index = this.users.findIndex(u => u.id === this.userToDelete.id)
         if (index !== -1) {
-          this.roles[index].isDeleted = true
+          this.users[index].isDeleted = true
         }
       }
       this.closeDeleteModal()
     },
 
-    saveRole() {
+    saveUser() {
       if (this.$refs.form && !this.$refs.form.validate()) {
         return
       }
 
-      const tab_allowed = {}
-      this.availableTabs.forEach(tab => {
-        tab_allowed[tab.key] = this.selectedTabs.includes(tab.key)
-      })
+      // fullname จะถูกสร้างจาก firstname และ lastname ในบรรทัดด้านล่าง
 
       if (this.isEditMode) {
-        const index = this.roles.findIndex(r => r.id === this.formData.id)
+        const index = this.users.findIndex(u => u.id === this.formData.id)
         if (index !== -1) {
-          this.roles[index] = {
-            ...this.roles[index],
-            tab_allowed,
-            deletable: this.formData.deletable,
-            update_at: new Date().toISOString()
+          this.users[index] = {
+            ...this.users[index],
+            firstname: this.formData.firstname,
+            lastname: this.formData.lastname,
+            fullname: `${this.formData.firstname} ${this.formData.lastname}`,
+            id_card: this.formData.id_card,
+            phone: this.formData.phone,
+            email: this.formData.email,
+            role: this.formData.role
           }
         }
       } else {
-        const newRole = {
+        const newUser = {
           id: this.nextId++,
-          role_name: this.formData.role_name,
-          role_level: parseInt(this.formData.role_level),
-          tab_allowed,
-          deletable: this.formData.deletable,
-          isDeleted: false,
-          create_at: new Date().toISOString(),
-          update_at: new Date().toISOString()
+          firstname: this.formData.firstname,
+          lastname: this.formData.lastname,
+          fullname: `${this.formData.firstname} ${this.formData.lastname}`,
+          id_card: this.formData.id_card,
+          phone: this.formData.phone,
+          email: this.formData.email,
+          role: this.formData.role,
+          isDeleted: false
         }
-        this.roles.push(newRole)
+        this.users.push(newUser)
       }
       this.closeModal()
-    },
-
-    getTabLabel(key) {
-      const tab = this.availableTabs.find(t => t.key === key)
-      return tab ? tab.label : key
-    },
-
-    isSubTab(key) {
-      const tab = this.availableTabs.find(t => t.key === key)
-      return tab && tab.parent
-    },
-
-    getMainTabs(tabAllowed) {
-      return Object.keys(tabAllowed).filter(key => {
-        const tab = this.availableTabs.find(t => t.key === key)
-        return tab && !tab.parent && tabAllowed[key]
-      })
     }
   }
 }
@@ -502,42 +456,49 @@ export default {
   border-radius: 12px !important;
   overflow: hidden;
   border: 1px solid #e0e0e0 !important;
+  background-color: #ffffff !important;
 }
 
-.role-table >>> thead th {
+.user-table >>> thead th {
   background-color: #e3f2fd !important;
   color: #1565c0 !important;
   font-weight: 600 !important;
   font-size: 0.9rem;
   border: none !important;
   padding: 16px 12px !important;
+  text-align: center;
 }
 
-.role-table >>> thead th:first-child {
+.user-table >>> thead th:first-child {
   border-radius: 8px 0 0 0;
 }
 
-.role-table >>> thead th:last-child {
+.user-table >>> thead th:last-child {
   border-radius: 0 8px 0 0;
 }
 
-.role-table >>> tbody tr {
+.user-table >>> tbody tr {
   border-bottom: 1px solid #f0f0f0;
 }
 
-.role-table >>> tbody tr:hover {
+.user-table >>> tbody tr:hover {
   background-color: #f5f9ff !important;
 }
 
-.role-table >>> tbody td {
+.user-table >>> tbody td {
   padding: 14px 12px !important;
   font-size: 0.9rem;
   color: #333;
+  text-align: center;
+}
+
+.user-table >>> tbody td:first-child {
+  text-align: left;
 }
 
 .role-chip {
   font-weight: 500;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 
 .action-btn {
